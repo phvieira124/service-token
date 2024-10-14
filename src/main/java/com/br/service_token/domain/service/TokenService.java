@@ -1,39 +1,49 @@
 package com.br.service_token.domain.service;
 
+import com.br.service_token.domain.authorization.Encrypt;
+import com.br.service_token.domain.authorization.JWT;
+import com.br.service_token.domain.authorization.Key;
+import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
+import org.jose4j.jwe.JsonWebEncryption;
+import org.jose4j.jwe.KeyManagementAlgorithmIdentifiers;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
-import org.jose4j.keys.HmacKey;
+import org.jose4j.jwt.consumer.InvalidJwtException;
+import org.jose4j.lang.JoseException;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
-import java.security.SecureRandom;
+import java.security.*;
+import java.sql.SQLOutput;
 import java.util.Base64;
 
 @Service
 public class TokenService {
 
-    public String generateJws() throws Exception {
-        // Geração da chave secreta AES de 128 bits
-        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-        keyGen.init(128); // Tamanho da chave
-        SecretKey aesKey = keyGen.generateKey();
+    private final Key key;
 
-        // Geração do IV (Initialization Vector) de 12 bytes para GCM
-        byte[] iv = new byte[12];
-        SecureRandom random = new SecureRandom();
-        random.nextBytes(iv);
+    private final Encrypt encrypt;
 
-        // Campo authData com o CPF
-        String authData = """
-                {"cpf":"1234"}
-                """;
+    private final JWT jwt;
+
+    public TokenService(Key key, Encrypt encrypt, JsonWebSignature jsonWebSignature, JWT jwt) {
+        this.key = key;
+        this.encrypt = encrypt;
+        this.jwt = jwt;
+    }
+
+    public String generateJws(String authData) throws Exception {
+
+        SecretKey secretKeyAes = key.generateKeyAes();
+        byte[] iv = key.generateIV();
+
+        System.out.println(key.base64EncodeSecretKey(secretKeyAes));
 
         // Criptografar o authData com AES GCM
-        String encryptedAuthData = encryptAuthData(aesKey, iv, authData);
+        String encryptedAuthData = encrypt.encryptAuthData(secretKeyAes, iv, authData);
 
         // Claims principais do JWT (iss, sub, etc.)
         JwtClaims claims = new JwtClaims();
@@ -42,53 +52,70 @@ public class TokenService {
         claims.setIssuedAtToNow();           // Data de emissão
         claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
 
+        claims.setClaim("authData", encryptedAuthData);
+
+        return jwt.buildJws(claims);
+    }
+
+    public String generateJwe(String authData) throws Exception {
+
+        SecretKey secretKeyAes = key.generateKeyAes();
+        byte[] iv = key.generateIV();
+
+        System.out.println(key.base64EncodeSecretKey(secretKeyAes));
+
+        // Criptografar o authData com AES GCM
+        String encryptedAuthData = encrypt.encryptAuthData(secretKeyAes, iv, authData);
+
+        // Claims principais do JWT (iss, sub, etc.)
+        JwtClaims claims = new JwtClaims();
+        claims.setIssuer("seu-issuer-aqui"); // Campo iss
+        claims.setSubject("phv");            // Campo sub
+        claims.setIssuedAtToNow();           // Data de emissão
+        claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
         claims.setClaim("authData", encryptedAuthData);  // Inclui o campo authData
 
-        String decript = decryptAuthData(aesKey, iv, encryptedAuthData);
-
-        System.out.println(decript); //print dado decriptado
-
-        // Chave secreta para assinatura do JWS
-        String secretKey = "sua-chave-secreta-deve-ser-muito-segura-e-ter-256-bits";
-        byte[] key = secretKey.getBytes();
-
-        // Cria o JWS e assina
-        JsonWebSignature jws = new JsonWebSignature();
-        jws.setPayload(claims.toJson());
-        jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.HMAC_SHA256); // Algoritmo de assinatura HS256
-        jws.setKey(new HmacKey(key));  // Define a chave para assinatura
-        jws.setDoKeyValidation(false); // Desabilita validação de tamanho da chave
-
-        // Gera o JWS
-        String jwsString = jws.getCompactSerialization();
-
-        return jwsString;
+        return jwt.buildJwe(secretKeyAes, claims);
     }
 
-    private static String encryptAuthData(SecretKey aesKey, byte[] iv, String authData) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv); // Tag length de 128 bits
-        cipher.init(Cipher.ENCRYPT_MODE, aesKey, gcmSpec);
+    public String generateJwsRSA(String authData) throws Exception {
+        // Gera um par de chaves RSA (pública e privada)
+        KeyPair keyPair = key.generateRsaKeyPair();
 
-        // Criptografa o authData
-        byte[] encryptedBytes = cipher.doFinal(authData.getBytes());
+        // Criptografar o authData com a chave pública (RSA)
+        String encryptedAuthData = encrypt.encryptAuthDataRSA(keyPair.getPublic(), authData);
 
-        // Retorna o authData criptografado em base64
-        return Base64.getEncoder().encodeToString(encryptedBytes);
+        // Claims principais do JWT (iss, sub, etc.)
+        JwtClaims claims = new JwtClaims();
+        claims.setIssuer("seu-issuer-aqui"); // Campo iss
+        claims.setSubject("phv");            // Campo sub
+        claims.setIssuedAtToNow();           // Data de emissão
+        claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
+        claims.setClaim("authData", encryptedAuthData);  // Inclui o campo authData
+
+        // Descriptografar o authData com a chave privada (RSA)
+        String decryptedAuthData = encrypt.decryptAuthDataRSA(keyPair.getPrivate(), encryptedAuthData);
+        System.out.println("AuthData decriptado: " + decryptedAuthData); // Exibe o conteúdo de authData decriptado
+
+        return jwt.buildJws(claims);
     }
 
-    // Método para descriptografar o authData
-    private static String decryptAuthData(SecretKey aesKey, byte[] iv, String encryptedAuthData) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);  // Tamanho do tag de autenticação é 128 bits
-        cipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
+    public String generateJweRSA(String authData) throws Exception {
+        // Gerar o par de chaves RSA (chave pública e privada)
+        KeyPair rsaKeyPair = key.generateRsaKeyPair();
+        PublicKey publicKey = rsaKeyPair.getPublic();
 
-        // Decodifica o valor criptografado de base64 e realiza a descriptografia
-        byte[] encryptedBytes = Base64.getDecoder().decode(encryptedAuthData);
-        byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+        // Geração de uma chave AES simétrica para criptografar o conteúdo
+        SecretKey aesKey = key.generateKeyAes();
 
-        // Retorna o authData descriptografado como string
-        return new String(decryptedBytes);
+        // Claims principais do JWT (iss, sub, etc.)
+        JwtClaims claims = new JwtClaims();
+        claims.setIssuer("seu-issuer-aqui"); // Campo iss
+        claims.setSubject("phv");            // Campo sub
+        claims.setIssuedAtToNow();           // Data de emissão
+        claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
+        claims.setClaim("authData", authData);  // Inclui o campo authData
+
+        return jwt.buildJwe(publicKey, claims);
     }
-
 }
