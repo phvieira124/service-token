@@ -1,6 +1,8 @@
 package com.br.service_token.adapter.input;
 
+import com.br.service_token.domain.model.TokenResponse;
 import com.br.service_token.domain.service.TokenService;
+import com.br.service_token.port.input.GenerateTokenUseCase;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,33 +14,33 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("v1")
 public class TokenController {
 
-    private final TokenService tokenService;
+    private final GenerateTokenUseCase generateTokenUseCase;
 
-    public TokenController(TokenService tokenService) {
-        this.tokenService = tokenService;
+    public TokenController(GenerateTokenUseCase generateTokenUseCase) {
+        this.generateTokenUseCase = generateTokenUseCase;
     }
 
     @GetMapping(value = "/token/jws")
-    public ResponseEntity<?> generateTokenJWS(@RequestBody String authData) throws Exception {
-        String token = tokenService.generateJws(authData);
+    public ResponseEntity<TokenResponse> generateTokenJWS(@RequestBody String authData) {
+        var token = generateTokenUseCase.generateTokenJwsAes(authData);
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 
     @GetMapping(value = "/token/jwe")
-    public ResponseEntity<?> generateTokenJWE(@RequestBody String authData) throws Exception {
-        String token = tokenService.generateJwe(authData);
+    public ResponseEntity<TokenResponse> generateTokenJWE(@RequestBody String authData) {
+        var token = generateTokenUseCase.generateTokenJweAes(authData);
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 
     @GetMapping(value = "/token/jws/rsa")
-    public ResponseEntity<?> generateTokenJwsRsa(@RequestBody String authData) throws Exception {
-        String token = tokenService.generateJwsRSA(authData);
+    public ResponseEntity<TokenResponse> generateTokenJwsRsa(@RequestBody String authData) {
+        var token = generateTokenUseCase.generateTokenJwsRsa(authData);
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 
     @GetMapping(value = "/token/jwe/rsa")
-    public ResponseEntity<?> generateToken(@RequestBody String authData) throws Exception {
-        String token = tokenService.generateJweRSA(authData);
+    public ResponseEntity<TokenResponse> generateToken(@RequestBody String authData) {
+        var token = generateTokenUseCase.generateTokenJweRsa(authData);
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 

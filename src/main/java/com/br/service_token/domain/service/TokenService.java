@@ -1,49 +1,52 @@
 package com.br.service_token.domain.service;
 
-import com.br.service_token.domain.authorization.Encrypt;
-import com.br.service_token.domain.authorization.JWT;
+import com.br.service_token.domain.authorization.Encryption;
+import com.br.service_token.domain.authorization.JsonWebToken;
 import com.br.service_token.domain.authorization.Key;
-import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
-import org.jose4j.jwe.JsonWebEncryption;
-import org.jose4j.jwe.KeyManagementAlgorithmIdentifiers;
-import org.jose4j.jws.AlgorithmIdentifiers;
+import com.br.service_token.domain.model.TokenResponse;
+import com.br.service_token.port.input.GenerateTokenUseCase;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
-import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.lang.JoseException;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.security.*;
-import java.sql.SQLOutput;
-import java.util.Base64;
 
 @Service
-public class TokenService {
+public class TokenService implements GenerateTokenUseCase {
 
     private final Key key;
 
-    private final Encrypt encrypt;
+    private final Encryption encryption;
 
-    private final JWT jwt;
+    private final JsonWebToken jsonWebToken;
 
-    public TokenService(Key key, Encrypt encrypt, JsonWebSignature jsonWebSignature, JWT jwt) {
+    public TokenService(Key key, Encryption encryption, JsonWebSignature jsonWebSignature, JsonWebToken jsonWebToken) {
         this.key = key;
-        this.encrypt = encrypt;
-        this.jwt = jwt;
+        this.encryption = encryption;
+        this.jsonWebToken = jsonWebToken;
     }
 
-    public String generateJws(String authData) throws Exception {
+    public TokenResponse generateTokenJwsAes(String authData) {
 
-        SecretKey secretKeyAes = key.generateKeyAes();
+        SecretKey secretKeyAes = null;
+        try {
+            secretKeyAes = key.generateKeyAes();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
         byte[] iv = key.generateIV();
 
         System.out.println(key.base64EncodeSecretKey(secretKeyAes));
 
         // Criptografar o authData com AES GCM
-        String encryptedAuthData = encrypt.encryptAuthData(secretKeyAes, iv, authData);
+        String encryptedAuthData = null;
+        try {
+            encryptedAuthData = encryption.encryptAuthDataAes(secretKeyAes, iv, authData);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         // Claims principais do JWT (iss, sub, etc.)
         JwtClaims claims = new JwtClaims();
@@ -54,18 +57,32 @@ public class TokenService {
 
         claims.setClaim("authData", encryptedAuthData);
 
-        return jwt.buildJws(claims);
+        try {
+            return new TokenResponse(jsonWebToken.buildJwsAes(claims));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public String generateJwe(String authData) throws Exception {
+    public TokenResponse generateTokenJweAes(String authData) {
 
-        SecretKey secretKeyAes = key.generateKeyAes();
+        SecretKey secretKeyAes = null;
+        try {
+            secretKeyAes = key.generateKeyAes();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
         byte[] iv = key.generateIV();
 
         System.out.println(key.base64EncodeSecretKey(secretKeyAes));
 
         // Criptografar o authData com AES GCM
-        String encryptedAuthData = encrypt.encryptAuthData(secretKeyAes, iv, authData);
+        String encryptedAuthData = null;
+        try {
+            encryptedAuthData = encryption.encryptAuthDataAes(secretKeyAes, iv, authData);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         // Claims principais do JWT (iss, sub, etc.)
         JwtClaims claims = new JwtClaims();
@@ -75,15 +92,29 @@ public class TokenService {
         claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
         claims.setClaim("authData", encryptedAuthData);  // Inclui o campo authData
 
-        return jwt.buildJwe(secretKeyAes, claims);
+        try {
+            return new TokenResponse(jsonWebToken.buildJweAes(secretKeyAes, claims));
+        } catch (JoseException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public String generateJwsRSA(String authData) throws Exception {
+    public TokenResponse generateTokenJwsRsa(String authData) {
         // Gera um par de chaves RSA (pública e privada)
-        KeyPair keyPair = key.generateRsaKeyPair();
+        KeyPair keyPair = null;
+        try {
+            keyPair = key.generateRsaKeyPair();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         // Criptografar o authData com a chave pública (RSA)
-        String encryptedAuthData = encrypt.encryptAuthDataRSA(keyPair.getPublic(), authData);
+        String encryptedAuthData = null;
+        try {
+            encryptedAuthData = encryption.encryptAuthDataRSA(keyPair.getPublic(), authData);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         // Claims principais do JWT (iss, sub, etc.)
         JwtClaims claims = new JwtClaims();
@@ -94,19 +125,30 @@ public class TokenService {
         claims.setClaim("authData", encryptedAuthData);  // Inclui o campo authData
 
         // Descriptografar o authData com a chave privada (RSA)
-        String decryptedAuthData = encrypt.decryptAuthDataRSA(keyPair.getPrivate(), encryptedAuthData);
+        String decryptedAuthData = null;
+        try {
+            decryptedAuthData = encryption.decryptAuthDataRSA(keyPair.getPrivate(), encryptedAuthData);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         System.out.println("AuthData decriptado: " + decryptedAuthData); // Exibe o conteúdo de authData decriptado
 
-        return jwt.buildJws(claims);
+        try {
+            return new TokenResponse(jsonWebToken.buildJwsAes(claims));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public String generateJweRSA(String authData) throws Exception {
+    public TokenResponse generateTokenJweRsa(String authData) {
         // Gerar o par de chaves RSA (chave pública e privada)
-        KeyPair rsaKeyPair = key.generateRsaKeyPair();
+        KeyPair rsaKeyPair = null;
+        try {
+            rsaKeyPair = key.generateRsaKeyPair();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         PublicKey publicKey = rsaKeyPair.getPublic();
-
-        // Geração de uma chave AES simétrica para criptografar o conteúdo
-        SecretKey aesKey = key.generateKeyAes();
 
         // Claims principais do JWT (iss, sub, etc.)
         JwtClaims claims = new JwtClaims();
@@ -116,6 +158,13 @@ public class TokenService {
         claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
         claims.setClaim("authData", authData);  // Inclui o campo authData
 
-        return jwt.buildJwe(publicKey, claims);
+        String jweRsa = null;
+        try {
+            jweRsa = jsonWebToken.buildJweRsa(publicKey, claims);
+            System.out.println(encryption.decryptJweRsa(jweRsa, rsaKeyPair.getPrivate()));
+            return new TokenResponse(jweRsa);
+        } catch (JoseException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
