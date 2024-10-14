@@ -14,17 +14,17 @@ import javax.crypto.SecretKey;
 import java.security.PublicKey;
 
 @Component
-public class JWT {
+public class JsonWebToken {
 
     private final JsonWebSignature jsonWebSignature;
     private final JsonWebEncryption jsonWebEncryption;
 
-    public JWT(JsonWebSignature jsonWebSignature, JsonWebEncryption jsonWebEncryption) {
+    public JsonWebToken(JsonWebSignature jsonWebSignature, JsonWebEncryption jsonWebEncryption) {
         this.jsonWebSignature = jsonWebSignature;
         this.jsonWebEncryption = jsonWebEncryption;
     }
 
-    public String buildJws(JwtClaims jwtClaims) throws Exception {
+    public String buildJwsAes(JwtClaims jwtClaims) throws Exception {
         // Chave secreta para assinatura do JWS
         String secretKey = "sua-chave-secreta-deve-ser-muito-segura-e-ter-256-bits";
         byte[] key = secretKey.getBytes();
@@ -38,7 +38,7 @@ public class JWT {
         return jsonWebSignature.getCompactSerialization();
     }
 
-    public String buildJwe(SecretKey aesKey, JwtClaims jwtClaims) throws JoseException {
+    public String buildJweAes(SecretKey aesKey, JwtClaims jwtClaims) throws JoseException {
         // Cria o JWE e define os parâmetros
         jsonWebEncryption.setPayload(jwtClaims.toJson());
         jsonWebEncryption.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.A128KW); // Algoritmo de gerenciamento de chave (AES Key Wrap)
@@ -48,7 +48,7 @@ public class JWT {
         return jsonWebEncryption.getCompactSerialization();
     }
 
-    public String buildJwe(PublicKey aesKey, JwtClaims jwtClaims) throws JoseException {
+    public String buildJweRsa(PublicKey aesKey, JwtClaims jwtClaims) throws JoseException {
         // Cria o JWE e define os parâmetros
         jsonWebEncryption.setPayload(jwtClaims.toJson());
         jsonWebEncryption.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.RSA_OAEP_256); // Algoritmo de gerenciamento de chave (AES Key Wrap)
@@ -57,5 +57,4 @@ public class JWT {
 
         return jsonWebEncryption.getCompactSerialization();
     }
-
 }

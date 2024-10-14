@@ -14,9 +14,16 @@ import java.security.PublicKey;
 import java.util.Base64;
 
 @Component
-public class Encrypt {
+public class Encryption {
 
-    public String encryptAuthData(SecretKey aesKey, byte[] iv, String authData) throws Exception {
+    private final JsonWebEncryption jsonWebEncryption;
+
+    public Encryption(JsonWebEncryption jsonWebEncryption) {
+        this.jsonWebEncryption = jsonWebEncryption;
+    }
+
+
+    public String encryptAuthDataAes(SecretKey aesKey, byte[] iv, String authData) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv); // Tag length de 128 bits
         cipher.init(Cipher.ENCRYPT_MODE, aesKey, gcmSpec);
@@ -29,7 +36,7 @@ public class Encrypt {
     }
 
     // Método para descriptografar o authData
-    public String decryptAuthData(SecretKey aesKey, byte[] iv, String encryptedAuthData) throws Exception {
+    public String decryptAuthDataAes(SecretKey aesKey, byte[] iv, String encryptedAuthData) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);  // Tamanho do tag de autenticação é 128 bits
         cipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
@@ -43,14 +50,13 @@ public class Encrypt {
     }
 
     // Método para descriptografar o JWE e acessar o campo authData
-    public String decryptJwe(String jweString, SecretKey aesKey) throws InvalidJwtException, JoseException {
+    public String decryptJweAes(String jweString, SecretKey aesKey) throws InvalidJwtException, JoseException {
         // Configura o JWE para descriptografia
-        JsonWebEncryption jwe = new JsonWebEncryption();
-        jwe.setCompactSerialization(jweString);  // Define o JWE a ser descriptografado
-        jwe.setKey(aesKey);  // Define a chave para descriptografar
+        jsonWebEncryption.setCompactSerialization(jweString);  // Define o JWE a ser descriptografado
+        jsonWebEncryption.setKey(aesKey);  // Define a chave para descriptografar
 
         // Descriptografa e obtém o payload (JWT Claims)
-        String payload = jwe.getPayload();
+        String payload = jsonWebEncryption.getPayload();
 
         // Parseia as claims do JWT
         JwtClaims claims = JwtClaims.parse(payload);
@@ -84,6 +90,15 @@ public class Encrypt {
 
         // Retorna o authData descriptografado como string
         return new String(decryptedBytes);
+    }
+
+    public String decryptJweRsa(String jweString, PrivateKey privateKey) throws JoseException {
+        jsonWebEncryption.setCompactSerialization(jweString);
+
+        // Define a chave privada RSA para descriptografar o JWE
+        jsonWebEncryption.setKey(privateKey);
+
+        return jsonWebEncryption.getPayload(); // Retorna o payload descriptografado
     }
 
 }

@@ -4,11 +4,11 @@ import com.br.service_token.domain.model.TokenResponse;
 
 public interface GenerateTokenUseCase {
 
-    TokenResponse generateTokenJwsAes();
+    TokenResponse generateTokenJwsAes(String authData);
 
-    TokenResponse generateTokenJweAes();
+    TokenResponse generateTokenJweAes(String authData);
 
-    TokenResponse generateTokenJwsRsa();
+    TokenResponse generateTokenJwsRsa(String authData);
 
-    TokenResponse generateTokenJweRsa();
+    TokenResponse generateTokenJweRsa(String authData);
 }
