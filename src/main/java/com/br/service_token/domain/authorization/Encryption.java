@@ -9,9 +9,12 @@ import org.springframework.stereotype.Component;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class Encryption {
@@ -99,6 +102,21 @@ public class Encryption {
         jsonWebEncryption.setKey(privateKey);
 
         return jsonWebEncryption.getPayload(); // Retorna o payload descriptografado
+    }
+
+    private String toBase64(byte[] keyBytes) {
+        return Base64.getEncoder().encodeToString(keyBytes);
+    }
+
+    public Map<String, String> showKeys(KeyPair keyPair){
+        byte[] publicKeyBytes = keyPair.getPublic().getEncoded();
+        byte[] privateKeyBytes = keyPair.getPrivate().getEncoded();
+
+        Map<String, String> keys = new HashMap<>();
+        keys.put("public", toBase64(publicKeyBytes));
+        keys.put("private", toBase64(privateKeyBytes));
+
+        return keys;
     }
 
 }

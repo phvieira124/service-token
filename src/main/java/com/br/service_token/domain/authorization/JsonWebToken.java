@@ -11,6 +11,7 @@ import org.jose4j.lang.JoseException;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 
 @Component
@@ -46,6 +47,16 @@ public class JsonWebToken {
         jsonWebEncryption.setKey(aesKey);
 
         return jsonWebEncryption.getCompactSerialization();
+    }
+
+    public String buildJwsRsa(JwtClaims jwtClaims, PrivateKey privateKey) throws Exception {
+        jsonWebSignature.setPayload(jwtClaims.toJson());
+        // Define o algoritmo RS256 (RSA com SHA-256)
+        jsonWebSignature.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
+        // Define a chave privada RSA para assinar o JWS
+        jsonWebSignature.setKey(privateKey);
+        // Gera a representação compacta do JWS (a string final do JWT assinado)
+        return jsonWebSignature.getCompactSerialization();
     }
 
     public String buildJweRsa(PublicKey aesKey, JwtClaims jwtClaims) throws JoseException {
