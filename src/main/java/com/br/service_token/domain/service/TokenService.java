@@ -194,23 +194,21 @@ public class TokenService implements GenerateTokenUseCase {
         // Converte a string Base64 em uma instância de PublicKey
         PublicKey publicKey = null;
         try {
-            publicKey = getPublicKeyFromBase64(tokenResponseAesRsa.base64PublicKey());
+            publicKey = key.getPublicKeyFromBase64(tokenResponseAesRsa.base64PublicKey());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         return new ValidationResponse(tokenResponseAesRsa.token(), jwtTokenValidator.validateJwt(tokenResponseAesRsa.token(), publicKey));
     }
 
-    // Método para converter uma chave pública em Base64 para PublicKey
-    public PublicKey getPublicKeyFromBase64(String base64PublicKey) throws Exception {
-        // Decodificar a chave pública da string Base64
-        byte[] decodedKey = Base64.getDecoder().decode(base64PublicKey);
+    @Override
+    public TokenResponseRsa updateJws(){
+        TokenResponseRsa tokenResponseRsa = generateTokenJwsRsa("""
+                {
+                    "cpf": 1234
+                }""");
 
-        // Criar uma especificação de chave a partir dos bytes decodificados
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decodedKey);
-
-        // Criar uma fábrica de chaves para RSA e gerar a chave pública
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        return keyFactory.generatePublic(keySpec);
+        var token = jsonWebToken.updateToken(tokenResponseRsa.base64PublicKey(),tokenResponseRsa.base64PrivateKey(), tokenResponseRsa.token());
+        return new TokenResponseRsa(token, tokenResponseRsa.base64PrivateKey(), tokenResponseRsa.base64PublicKey());
     }
 }

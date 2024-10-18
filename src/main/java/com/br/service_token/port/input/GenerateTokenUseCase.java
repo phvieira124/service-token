@@ -17,4 +17,6 @@ public interface GenerateTokenUseCase {
 
     ValidationResponse validationTokenRsa();
 
+    TokenResponseRsa updateJws();
+
 }
