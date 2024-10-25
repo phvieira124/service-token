@@ -6,6 +6,7 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.security.*;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
@@ -48,6 +49,18 @@ public class Key {
         // Criar uma fábrica de chaves para RSA e gerar a chave pública
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePublic(keySpec);
+    }
+
+    // Método para converter uma chave pública em Base64 para PublicKey
+    public PrivateKey getPrivateKeyFromBase64(String base64PrivateKey) throws Exception {
+        byte[] decodedKey = Base64.getDecoder().decode(base64PrivateKey);
+
+        // Criar uma especificação de chave a partir dos bytes decodificados
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decodedKey);
+
+        // Criar uma fábrica de chaves para RSA e gerar a chave pública
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePrivate(keySpec);
     }
 
 }

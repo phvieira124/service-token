@@ -11,6 +11,7 @@ import com.br.service_token.domain.model.ValidationResponse;
 import com.br.service_token.port.input.GenerateTokenUseCase;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
+import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.lang.JoseException;
 import org.springframework.stereotype.Service;
 
@@ -185,7 +186,26 @@ public class TokenService implements GenerateTokenUseCase {
     }
 
     @Override
-    public ValidationResponse validationTokenRsa() {
+    public TokenResponseRsaJwe generateTokenJweSignedRsa() throws Exception {
+        // Gerar o par de chaves RSA (chave pública e privada)
+        KeyPair keyPair = key.generateRsaKeyPair();
+        Map<String, String> keys = encryption.showKeys(keyPair);
+        PublicKey publicKey = keyPair.getPublic();
+        PrivateKey privateKey = keyPair.getPrivate();
+
+        // Claims principais do JWT (iss, sub, etc.)
+        JwtClaims claims = new JwtClaims();
+        claims.setIssuer("seu-issuer-aqui"); // Campo iss
+        claims.setSubject("phv");            // Campo sub
+        claims.setIssuedAtToNow();           // Data de emissão
+        claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
+
+        String jweRsa = jsonWebToken.buildJweRsaSigned(claims, privateKey, publicKey);
+        return new TokenResponseRsaJwe(jweRsa, keys.get("public"), keys.get("private"), encryption.decryptJweRsa(jweRsa, keyPair.getPrivate()));
+    }
+
+    @Override
+    public ValidationResponse validationTokenJwsRsa() {
         TokenResponseRsa tokenResponseAesRsa = generateTokenJwsRsa("""
                 {
                     "cpf": 1234
@@ -210,5 +230,16 @@ public class TokenService implements GenerateTokenUseCase {
 
         var token = jsonWebToken.updateToken(tokenResponseRsa.base64PublicKey(),tokenResponseRsa.base64PrivateKey(), tokenResponseRsa.token());
         return new TokenResponseRsa(token, tokenResponseRsa.base64PrivateKey(), tokenResponseRsa.base64PublicKey());
+    }
+
+    @Override
+    public ValidationResponse validationTokenJweRsa() throws Exception {
+        TokenResponseRsaJwe tokenResponseRsaJwe = generateTokenJweSignedRsa();
+
+        // Converte a string Base64 em uma instância de PublicKey
+        PublicKey publicKey = key.getPublicKeyFromBase64(tokenResponseRsaJwe.base64PublicKey());
+        PrivateKey privateKey = key.getPrivateKeyFromBase64(tokenResponseRsaJwe.base64PrivateKey());
+
+        return new ValidationResponse(tokenResponseRsaJwe.token(), jwtTokenValidator.validateJweJws(tokenResponseRsaJwe.token(), privateKey, publicKey));
     }
 }

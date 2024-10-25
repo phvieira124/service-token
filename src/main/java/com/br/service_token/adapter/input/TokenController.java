@@ -40,15 +40,21 @@ public class TokenController {
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 
-    @GetMapping(value = "/token/validation")
+    @GetMapping(value = "/token/jws/validation")
     public ResponseEntity<ValidationResponse> validationToken(){
-        var token = generateTokenUseCase.validationTokenRsa();
+        var token = generateTokenUseCase.validationTokenJwsRsa();
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 
     @PutMapping(value = "/token/jws/rsa")
     public ResponseEntity<TokenResponseRsa> updateJws() {
         var token = generateTokenUseCase.updateJws();
+        return ResponseEntity.status(HttpStatus.OK).body(token);
+    }
+
+    @GetMapping(value = "/token/jwe/validation")
+    public ResponseEntity<ValidationResponse> validationTokenJwe() throws Exception {
+        var token = generateTokenUseCase.validationTokenJweRsa();
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 

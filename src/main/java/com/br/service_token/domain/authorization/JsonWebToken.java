@@ -76,6 +76,17 @@ public class JsonWebToken {
         return jsonWebEncryption.getCompactSerialization();
     }
 
+    public String buildJweRsaSigned(JwtClaims jwtClaims, PrivateKey privateKey, PublicKey publicKey) throws Exception {
+        String signedJwt = buildJwsRsa(jwtClaims, privateKey);
+
+        jsonWebEncryption.setPayload(signedJwt); // O payload do JWE é o JWS (token assinado)
+        jsonWebEncryption.setKey(publicKey); // Chave pública usada para criptografar
+        jsonWebEncryption.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.RSA_OAEP_256); // Algoritmo de criptografia de chave
+        jsonWebEncryption.setEncryptionMethodHeaderParameter(ContentEncryptionAlgorithmIdentifiers.AES_128_GCM); // Algoritmo de criptografia do conteúdo (payload)
+
+        return jsonWebEncryption.getCompactSerialization();
+    }
+
     public String updateToken(String publicKeyPem, String privateKeyPem, String jwsCompactSerialization){
 
         // Carregar a chave pública no formato correto
