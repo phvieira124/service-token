@@ -52,10 +52,15 @@ public class TokenController {
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
 
+    @GetMapping(value = "/token/jwe/jws/validation")
+    public ResponseEntity<ValidationResponse> validationTokenJweJws() throws Exception {
+        var token = generateTokenUseCase.validationTokenJweJwsRsa();
+        return ResponseEntity.status(HttpStatus.OK).body(token);
+    }
+
     @GetMapping(value = "/token/jwe/validation")
     public ResponseEntity<ValidationResponse> validationTokenJwe() throws Exception {
         var token = generateTokenUseCase.validationTokenJweRsa();
         return ResponseEntity.status(HttpStatus.OK).body(token);
     }
-
 }

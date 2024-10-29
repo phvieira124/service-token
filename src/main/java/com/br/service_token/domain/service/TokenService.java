@@ -11,14 +11,11 @@ import com.br.service_token.domain.model.ValidationResponse;
 import com.br.service_token.port.input.GenerateTokenUseCase;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
-import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.lang.JoseException;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.security.*;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
 import java.util.Map;
 
 @Service
@@ -175,6 +172,37 @@ public class TokenService implements GenerateTokenUseCase {
         claims.setIssuedAtToNow();           // Data de emissão
         claims.setExpirationTimeMinutesInTheFuture(60);  // Expira em 1 hora
         claims.setClaim("authData", authData);  // Inclui o campo authData
+        claims.setClaim("userId", "123123");
+
+        String jweRsa = null;
+        try {
+            jweRsa = jsonWebToken.buildJweRsa(publicKey, claims);
+            return new TokenResponseRsaJwe(jweRsa, keys.get("public"), keys.get("private"), encryption.decryptJweRsa(jweRsa, keyPair.getPrivate()));
+        } catch (JoseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public TokenResponseRsaJwe generateTokenJweRsa() {
+        // Gerar o par de chaves RSA (chave pública e privada)
+        KeyPair keyPair = null;
+        try {
+            keyPair = key.generateRsaKeyPair();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        Map<String, String> keys = encryption.showKeys(keyPair);
+        PublicKey publicKey = keyPair.getPublic();
+
+        // Claims principais do JWT (iss, sub, etc.)
+        JwtClaims claims = new JwtClaims();
+        claims.setIssuer("phv"); // Campo iss
+        claims.setSubject("phv-token");            // Campo sub
+        claims.setIssuedAtToNow();           // Data de emissão
+        claims.setExpirationTimeMinutesInTheFuture(10);  // Expira em 1 hora
+        claims.setAudience("service-token");
+        claims.setClaim("userId", "123123");
 
         String jweRsa = null;
         try {
@@ -233,7 +261,7 @@ public class TokenService implements GenerateTokenUseCase {
     }
 
     @Override
-    public ValidationResponse validationTokenJweRsa() throws Exception {
+    public ValidationResponse validationTokenJweJwsRsa() throws Exception {
         TokenResponseRsaJwe tokenResponseRsaJwe = generateTokenJweSignedRsa();
 
         // Converte a string Base64 em uma instância de PublicKey
@@ -241,5 +269,14 @@ public class TokenService implements GenerateTokenUseCase {
         PrivateKey privateKey = key.getPrivateKeyFromBase64(tokenResponseRsaJwe.base64PrivateKey());
 
         return new ValidationResponse(tokenResponseRsaJwe.token(), jwtTokenValidator.validateJweJws(tokenResponseRsaJwe.token(), privateKey, publicKey));
+    }
+
+    @Override
+    public ValidationResponse validationTokenJweRsa() throws Exception {
+        TokenResponseRsaJwe tokenResponseRsaJwe = generateTokenJweRsa();
+
+        PrivateKey privateKey = key.getPrivateKeyFromBase64(tokenResponseRsaJwe.base64PrivateKey());
+
+        return new ValidationResponse(tokenResponseRsaJwe.token(), jwtTokenValidator.validateJwe(tokenResponseRsaJwe.token(), privateKey));
     }
 }

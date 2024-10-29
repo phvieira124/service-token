@@ -15,12 +15,16 @@ public interface GenerateTokenUseCase {
 
     TokenResponseRsaJwe generateTokenJweRsa(String authData);
 
+    TokenResponseRsaJwe generateTokenJweRsa();
+
     ValidationResponse validationTokenJwsRsa();
 
     TokenResponseRsa updateJws();
 
-    ValidationResponse validationTokenJweRsa() throws Exception;
+    ValidationResponse validationTokenJweJwsRsa() throws Exception;
 
     TokenResponseRsaJwe generateTokenJweSignedRsa() throws Exception;
+
+    ValidationResponse validationTokenJweRsa() throws Exception;
 
 }
