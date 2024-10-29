@@ -1,14 +1,26 @@
 package com.br.service_token.port.input;
 
-import com.br.service_token.domain.model.TokenResponse;
+import com.br.service_token.domain.model.TokenResponseAes;
+import com.br.service_token.domain.model.TokenResponseRsa;
+import com.br.service_token.domain.model.TokenResponseRsaJwe;
+import com.br.service_token.domain.model.ValidationResponse;
 
 public interface GenerateTokenUseCase {
 
-    TokenResponse generateTokenJwsAes(String authData);
+    TokenResponseAes generateTokenJwsAes(String authData);
 
-    TokenResponse generateTokenJweAes(String authData);
+    TokenResponseAes generateTokenJweAes(String authData);
 
-    TokenResponse generateTokenJwsRsa(String authData);
+    TokenResponseRsa generateTokenJwsRsa(String authData);
 
-    TokenResponse generateTokenJweRsa(String authData);
+    TokenResponseRsaJwe generateTokenJweRsa(String authData);
+
+    ValidationResponse validationTokenJwsRsa();
+
+    TokenResponseRsa updateJws();
+
+    ValidationResponse validationTokenJweRsa() throws Exception;
+
+    TokenResponseRsaJwe generateTokenJweSignedRsa() throws Exception;
+
 }
